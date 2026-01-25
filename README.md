@@ -249,18 +249,21 @@ You will receive a JSON response with:
 ```json
 {
   "status": "success",
-  "timestamp": "2026-01-25T12:15:19.126262+00:00",
+  "timestamp": "2026-01-25T12:47:19.938763+00:00",
   "data": {
     "vessel": "EVER GIVEN",
     "intent": "VERIFY",
-    "message": "✅ SECURITY SCAN FOR EVER GIVEN:\nAnalysis complete.",
-    "map_url": "/static/map_EVER_GIVEN_174519.html",
+    "message": "⚠️ SECURITY SCAN FOR EVER GIVEN:\n⚠️ Found 3 Anomalies\n   - Speed Violation: 714.8kts (Max 25.0kts)\n   - Unrealistic Acceleration: 3.6kts -> 714.8kts\n   - Spoofing Risk: Heading 180.0° vs Course 0°",
+    "map_url": "/static/map_EVER_GIVEN_181719.html",
     "metadata": {
-      "status": "ANOMALY",
-      "msg": "Impossible Speed: 714.8 kts (Limit: 25.0 kts)",
+      "is_clean": false,
+      "summary": "⚠️ Found 3 Anomalies",
       "details": {
-        "implied_speed": 714.8023153924921,
-        "dist": 119.13371923208202
+        "flags": [
+          "Speed Violation: 714.8kts (Max 25.0kts)",
+          "Unrealistic Acceleration: 3.6kts -> 714.8kts",
+          "Spoofing Risk: Heading 180.0° vs Course 0°"
+        ]
       }
     }
   }
