@@ -31,11 +31,13 @@ A FastAPI-based prototype that allows users to interact with maritime AIS (Autom
 ---
 ## Architecture Overview
 ``` bash
-/maritime-ai-commander
+/maritime_ai_commander
 │
 ├── main.py                 # Application Entry Point
 ├── requirements.txt        # Dependencies
 ├── README.md               # Documentation
+├── docker-compose.yml
+├── Dockerfile
 │
 ├── data/
 │   └── ais_sample_data.csv # Dataset
@@ -132,9 +134,9 @@ AIS codes are mapped to human-readable maritime labels:
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/Amriteshwork/maritime-ai-commander.git
+git clone https://github.com/Amriteshwork/maritime_ai_commander.git
 
-cd maritime-ai-commander
+cd maritime_ai_commander
 ```
 ### 2. Create and Activate Virtual Environment (Recommended)
 On Linux / macOS
@@ -285,6 +287,16 @@ curl -X POST http://127.0.0.1:8000/query \
   -H "Content-Type: application/json" \
   -d '{"query": "Check if INS Kolkata movement is consistent"}'
 ```
+## Docker Setup
+Run the entire system in a container without installing Python dependencies locally.
+
+**Build and Run**
+```bash
+docker-compose up --build
+```
+- Access the API The service will be available at http://localhost:8000
+Maps: Maps generated inside the container will be synced to your local static/ folder
+
 ---
 ## Viewing the Generated Map
 Each successful query generates a Folium HTML map. In the response we will see something like:

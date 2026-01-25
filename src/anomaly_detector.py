@@ -1,86 +1,104 @@
 from geopy.distance import geodesic
 import pandas as pd
 import math
-
 import logging
+
 logger = logging.getLogger(__name__)
 
 # Mapping AIS VesselTypes to realistic max speeds (knots)
 SPEED_LIMITS = {
-    # Cargo/Tanker (70-89): Heavy, slow.
-    range(70, 90): 25.0,
-    # High Speed Craft (40-49): Very fast.
-    range(40, 50): 45.0, 
-    # Tugs/Fishing (30-39, 52): Operational vessels.
-    range(30, 40): 20.0,
+    range(70, 90): 25.0, # Cargo/Tanker
+    range(40, 50): 45.0, # High Speed Craft
+    range(30, 40): 20.0, # Tugs/Fishing
     range(52, 53): 18.0, 
-    # Passenger (60-69): fast ferries vs cruise ships
-    range(60, 70): 30.0
+    range(60, 70): 30.0  # Passenger
 }
 
 def get_max_speed(vessel_type):
-    """Returns dynamic speed limit based on vessel class."""
     try:
         v_code = int(vessel_type)
         for r, limit in SPEED_LIMITS.items():
-            if v_code in r:
-                return limit
-    except Exception as e:
-        logger.info(f"Not able to get 'Max Speed' because: {str(e)}, Returning 30.0")
-    return 30.0 # Default fallback
+            if v_code in r: return limit
+    except: pass
+    return 30.0
+
+def calculate_bearing(lat1, lon1, lat2, lon2):
+    """Calculates bearing between two points."""
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    d_lon = lon2 - lon1
+    x = math.sin(d_lon) * math.cos(lat2)
+    y = math.cos(lat1) * math.sin(lat2) - (math.sin(lat1) * math.cos(lat2) * math.cos(d_lon))
+    return (math.degrees(math.atan2(x, y)) + 360) % 360
 
 def detect_anomalies(history_df: pd.DataFrame) -> dict:
     """
-    Analyzes vessel track for physical inconsistencies.
-    Returns: Structured dictionary with status and logs.
+    Analyzes vessel track using 3-point logic (A -> B -> C).
     """
-    if len(history_df) < 2:
-        return {"status": "UNCERTAIN", "msg": "Insufficient history."}
-
-    # Data Retrieval
-    curr = history_df.iloc[-1]
-    prev = history_df.iloc[-2]
-    
-    # 1. TIME CHECK (Duplicate detection)
-    delta_hours = (curr['Timestamp'] - prev['Timestamp']).total_seconds() / 3600
-    if delta_hours <= 0:
-        return {"status": "ANOMALY", "msg": "Duplicate or unordered timestamps."}
-
-    # 2. SPEED CHECK ("Teleportation")
-    distance_nm = geodesic(
-        (prev['LAT'], prev['LON']), 
-        (curr['LAT'], curr['LON'])
-    ).nautical
-    
-    implied_speed = distance_nm / delta_hours
-    max_allowed = get_max_speed(curr.get('VesselType', 0))
-    
-    if implied_speed > max_allowed:
+    # Require at least 3 points for "Smoothness" check
+    if len(history_df) < 3:
         return {
-            "status": "ANOMALY",
-            "msg": f"Impossible Speed: {implied_speed:.1f} kts (Limit: {max_allowed} kts)",
-            "details": {"implied_speed": implied_speed, "dist": distance_nm}
+            "is_clean": True, 
+            "summary": "Insufficient history (need 3+ points).", 
+            "details": {"flags": []}
         }
 
-    # 3. SPOOFING CHECK (Heading vs Course)
-    reported_cog = curr.get('COG', 0)    # If the ship reports heading North (0°) but moves East (90°), it's spoofing.
-    # Only check if the ship actually moved significant distance
-    if distance_nm > 0.5:
-        # Calculate actual bearing between two points
-        lat1, lon1 = math.radians(prev['LAT']), math.radians(prev['LON'])
-        lat2, lon2 = math.radians(curr['LAT']), math.radians(curr['LON'])
-        dLon = lon2 - lon1
-        y = math.sin(dLon) * math.cos(lat2)
-        x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dLon)
-        actual_bearing = (math.degrees(math.atan2(y, x)) + 360) % 360
-        
-        diff = abs(reported_cog - actual_bearing)
-        if diff > 180: diff = 360 - diff
-        
-        if diff > 45: # 45 degrees deviation threshold
-            return {
-                "status": "WARNING", 
-                "msg": f"Heading Mismatch (Spoofing Risk). Rep: {reported_cog:.0f}°, Act: {actual_bearing:.0f}°"
-            }
+    # Get Last 3 Points: p1 (Oldest) -> p2 (Middle) -> p3 (Latest)
+    p3 = history_df.iloc[-1]
+    p2 = history_df.iloc[-2]
+    p1 = history_df.iloc[-3]
 
-    return {"status": "CLEAN", "msg": "Movement consistent with physical laws."}
+    flags = []
+
+    # SEGMENT 1 (A -> B)
+    t1 = (p2['Timestamp'] - p1['Timestamp']).total_seconds() / 3600
+    d1 = geodesic((p1['LAT'], p1['LON']), (p2['LAT'], p2['LON'])).nautical
+    v1 = d1 / t1 if t1 > 0 else 0
+    
+    # SEGMENT 2 (B -> C)
+    t2 = (p3['Timestamp'] - p2['Timestamp']).total_seconds() / 3600
+    d2 = geodesic((p2['LAT'], p2['LON']), (p3['LAT'], p3['LON'])).nautical
+    v2 = d2 / t2 if t2 > 0 else 0
+
+    # CHECK A: Max Speed (Physics Limit)
+    max_allowed = get_max_speed(p3.get('VesselType', 0))
+    if v2 > max_allowed:
+        flags.append(f"Speed Violation: {v2:.1f}kts (Max {max_allowed}kts)")
+
+    # CHECK B: Acceleration (Smoothness)
+    if abs(v2 - v1) > 15.0:
+        flags.append(f"Unrealistic Acceleration: {v1:.1f}kts -> {v2:.1f}kts")
+
+    # CHECK C: Trajectory (Turn Smoothness)
+    if d1 > 0.5 and d2 > 0.5:
+        b1 = calculate_bearing(p1['LAT'], p1['LON'], p2['LAT'], p2['LON'])
+        b2 = calculate_bearing(p2['LAT'], p2['LON'], p3['LAT'], p3['LON'])
+        
+        turn = abs(b2 - b1)
+        if turn > 180: turn = 360 - turn
+        
+        # If moving fast, sharp turns are impossible
+        if v2 > 20.0 and turn > 60:
+            flags.append(f"Impossible Turn: {turn:.0f}° at {v2:.1f}kts")
+
+    # CHECK D: Spoofing (Heading vs Course)
+    cog = p3.get('COG', 0)
+    if d2 > 0.5:
+        b_final = calculate_bearing(p2['LAT'], p2['LON'], p3['LAT'], p3['LON'])
+        diff = abs(cog - b_final)
+        if diff > 180: diff = 360 - diff
+        if diff > 45:
+            flags.append(f"Spoofing Risk: Heading {cog}° vs Course {b_final:.0f}°")
+
+    # Return structure matching main.py expectations
+    if not flags:
+        return {
+            "is_clean": True, 
+            "summary": "✅ Movement smooth & consistent.",
+            "details": {"flags": []}
+        }
+    
+    return {
+        "is_clean": False, 
+        "summary": f"⚠️ Found {len(flags)} Anomalies", 
+        "details": {"flags": flags}
+    }

@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  maritime-ai:
+    build: .
+    container_name: maritime_ai_commander
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./static:/app/static
+      # Mount logs so you can see them outside the container
+      - ./logs:/app/logs
+    environment:
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
