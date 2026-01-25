@@ -208,32 +208,32 @@ You will receive a JSON response with:
 
 ```json
     {
-    "status": "success",
-    "timestamp": "2026-01-25T11:33:46.306386+00:00",
-    "data": {
-        "vessel": "INS KOLKATA",
-        "intent": "SHOW",
-        "message": "INS KOLKATA is a Military operations.\nLast seen OLD DATA (3.0 days ago) at 12.95, 80.33.\nStatus: Under way using engine | Speed: 15.0 kts | Heading: 135.0°",
-        "map_url": "/static/map_INS_KOLKATA_170346.html",
-        "metadata": {
-            "status": "Under way using engine",
-            "type": "Military operations",
-            "freshness_hours": 73.06
-            }
-        }
+  "status": "success",
+  "timestamp": "2026-01-25T12:49:18.177543+00:00",
+  "data": {
+    "vessel": "INS KOLKATA",
+    "intent": "SHOW",
+    "message": "INS KOLKATA is a Military operations.\nLast seen OLD DATA (3.1 days ago) at 12.95, 80.33.\nStatus: Under way using engine | Speed: 15.0 kts | Heading: 135.0°",
+    "map_url": "/static/map_INS_KOLKATA_181918.html",
+    "metadata": {
+      "status": "Under way using engine",
+      "type": "Military operations",
+      "freshness_hours": 74.32
     }
+  }
+}
 ```
 > **Example Response: Prediction**   
 ***Query**: "Where it will be in 2 hours?"*
 ```json
 {
   "status": "success",
-  "timestamp": "2026-01-25T12:09:22.061613+00:00",
+  "timestamp": "2026-01-25T12:49:53.903410+00:00",
   "data": {
     "vessel": "INS KOLKATA",
     "intent": "PREDICT",
     "message": "PREDICTION (120 min horizon):\nINS KOLKATA will move to 12.59463, 80.69156.\nAssumes constant speed of 15.0 kts on course 135.0°.",
-    "map_url": "/static/map_INS_KOLKATA_173922.html",
+    "map_url": "/static/map_INS_KOLKATA_181953.html",
     "metadata": {
       "horizon_minutes": 120,
       "predicted_coords": {
