@@ -1,4 +1,4 @@
-# Maritime AI Commander ⚓️
+# Maritime AI Commander
 
 **An NLP-driven Microservice for AIS Tracking, Predictive Analytics, and Anomaly Detection.**
 
@@ -185,7 +185,7 @@ The system is now `LIVE`
 
 ## Using FastAPI Interactive Docs (Swagger UI)
 Open your browser and go to:
-> http://127.0.0.1:8000/doc
+> http://127.0.0.1:8000/docs
 
 You will see an interactive UI where you can test the API without writing any code.   
 **Example:**   
