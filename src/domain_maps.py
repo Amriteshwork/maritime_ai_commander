@@ -1,7 +1,11 @@
+import logging
+logger = logging.getLogger(__name__)
+
 def get_vessel_type(type_code: float) -> str:
     try:
         code = int(type_code)
     except:
+        logger.info(f"Vessel Type: {type_code} not available!!")
         return "Unknown"
 
     if code == 0:

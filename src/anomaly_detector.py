@@ -2,7 +2,9 @@ from geopy.distance import geodesic
 import pandas as pd
 import math
 
-# --- DOMAIN KNOWLEDGE MAP ---
+import logging
+logger = logging.getLogger(__name__)
+
 # Mapping AIS VesselTypes to realistic max speeds (knots)
 SPEED_LIMITS = {
     # Cargo/Tanker (70-89): Heavy, slow.
@@ -23,8 +25,8 @@ def get_max_speed(vessel_type):
         for r, limit in SPEED_LIMITS.items():
             if v_code in r:
                 return limit
-    except:
-        pass
+    except Exception as e:
+        logger.info(f"Not able to get 'Max Speed' because: {str(e)}, Returning 30.0")
     return 30.0 # Default fallback
 
 def detect_anomalies(history_df: pd.DataFrame) -> dict:
@@ -61,8 +63,7 @@ def detect_anomalies(history_df: pd.DataFrame) -> dict:
         }
 
     # 3. SPOOFING CHECK (Heading vs Course)
-    # If the ship reports heading North (0°) but moves East (90°), it's spoofing.
-    reported_cog = curr.get('COG', 0)
+    reported_cog = curr.get('COG', 0)    # If the ship reports heading North (0°) but moves East (90°), it's spoofing.
     # Only check if the ship actually moved significant distance
     if distance_nm > 0.5:
         # Calculate actual bearing between two points

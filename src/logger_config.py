@@ -1,6 +1,5 @@
+import os, sys
 import logging
-import sys
-import os
 
 def setup_logging():
     
@@ -18,7 +17,6 @@ def setup_logging():
     console_handler.setFormatter(formatter)
     root_logger.addHandler(console_handler)
 
-    # 4. File Handler (Optional - Good for production audit)
     log_dir = "logs"
     os.makedirs(log_dir, exist_ok=True)
     file_handler = logging.FileHandler(os.path.join(log_dir, "app.log"))
