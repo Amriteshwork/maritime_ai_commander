@@ -8,20 +8,20 @@ def get_vessel_type(type_code: float) -> str:
         return "Not available"
 
     if 20 <= code <= 29:
-        return "WIG (Wing in Ground)"
+        return "Wing in Ground (WIG)"
 
     if code == 30:
         return "Fishing"
     if code == 31:
         return "Towing"
     if code == 32:
-        return "Towing (large)"
+        return "Towing (length >200m or breadth >25m)"
     if code == 33:
-        return "Dredging/Underwater ops"
+        return "Dredging or underwater operations"
     if code == 34:
-        return "Diving ops"
+        return "Diving operations"
     if code == 35:
-        return "Military ops"
+        return "Military operations"
     if code == 36:
         return "Sailing"
     if code == 37:
@@ -41,11 +41,11 @@ def get_vessel_type(type_code: float) -> str:
     if code == 53:
         return "Port tender"
     if code == 54:
-        return "Anti-pollution"
+        return "Anti-pollution vessel"
     if code == 55:
-        return "Law enforcement"
+        return "Law enforcement vessel"
     if 56 <= code <= 57:
-        return "Spare"
+        return "Spare (reserved for future use)"
     if code == 58:
         return "Medical transport"
     if code == 59:
@@ -61,7 +61,7 @@ def get_vessel_type(type_code: float) -> str:
         return "Tanker"
 
     if 90 <= code <= 99:
-        return "Other / Special"
+        return "Other / special vessel"
 
     return f"Unknown ({code})"
 
