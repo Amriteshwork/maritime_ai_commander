@@ -32,7 +32,7 @@ class DataLoader:
         self.df['COG'] = pd.to_numeric(self.df['COG'], errors='coerce').fillna(0.0)
         self.df['MMSI'] = pd.to_numeric(self.df['MMSI'], errors='coerce').fillna(0).astype(int)
         
-        # FIX: Enforce UTC Timezone
+        # UTC Timezone
         self.df['Timestamp'] = pd.to_datetime(self.df['Timestamp'], errors='coerce', utc=True)
         
         # Drop invalid rows
