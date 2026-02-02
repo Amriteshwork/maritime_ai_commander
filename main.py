@@ -79,7 +79,7 @@ def generate_map(vessel, lat, lon, pred_lat=None, pred_lon=None):
 def process_query(request: QueryRequest):
     global LAST_VESSEL_CONTEXT
 
-    print(f"\n📨 INCOMING QUERY: '{request.query}'")
+    logger.info(f"\nINCOMING QUERY: '{request.query}'")
 
     parsed = nlp.parse_query(request.query, context_vessel=LAST_VESSEL_CONTEXT)
 

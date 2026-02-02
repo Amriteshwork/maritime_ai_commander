@@ -72,7 +72,7 @@ class NLPProcessor:
         
         # Priority B: Context Resolution
         if not vessel and context_vessel:
-            pronoun_tokens = ["IT", "ITS", "THEIR", "THIS", "SHE", "HE"]
+            pronoun_tokens = ["IT", "ITS", "THEIR", "THIS"]
             if any(token.text.upper() in pronoun_tokens for token in doc):
                 vessel = context_vessel
             elif "THE SHIP" in query.upper() or "THE VESSEL" in query.upper():
