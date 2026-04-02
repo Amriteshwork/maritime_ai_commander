@@ -1,10 +1,13 @@
 import os
 import folium
+import uvicorn
 import pandas as pd
 from datetime import datetime, timezone 
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+from config import logger, DATA_PATH, STATIC_DIR
 
 from src.data_loader import DataLoader
 from src.nlp_processor import NLPProcessor
@@ -12,29 +15,18 @@ from src.geospatial_utils import calculate_future_position
 from src.anomaly_detector import detect_anomalies
 from src.domain_maps import get_vessel_type, get_nav_status
 
-import logging
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-
-base_dir = os.path.dirname(os.path.abspath(__file__))
-data_path = os.path.join(base_dir, "data", "ais_sample_data.csv")
-static_dir = os.path.join(base_dir, "static")
-os.makedirs(static_dir, exist_ok=True)
-
 
 app = FastAPI(
     title="Maritime AI Commander", 
     description="NLP-driven interface for AIS tracking and predictive analytics.",
-    version="2.1.0"
+    version="2.1.1"
 )
 
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 logger.info("Initializing System...")
-loader = DataLoader(data_path)
+loader = DataLoader(DATA_PATH)
 nlp = NLPProcessor(loader.get_all_vessel_names())
 logger.info("System Ready. Listening on Port 8000.")
 
@@ -44,6 +36,9 @@ LAST_VESSEL_CONTEXT = None
 class QueryRequest(BaseModel):
     query: str
 
+class AgentRequest(BaseModel):
+    query: str
+    session_id: str = "default_session"
 
 def generate_map(vessel, lat, lon, pred_lat=None, pred_lon=None):
     m = folium.Map(location=[lat, lon], zoom_start=10, tiles="CartoDB positron")
@@ -69,11 +64,36 @@ def generate_map(vessel, lat, lon, pred_lat=None, pred_lon=None):
 
     safe_vessel = vessel.replace(" ", "_").replace("/", "_")
     filename = f"map_{safe_vessel}_{datetime.now().strftime('%H%M%S')}.html"
-    filepath = os.path.join(static_dir, filename)
+    filepath = os.path.join(STATIC_DIR, filename)
 
     m.save(filepath)
-    return f"/static/{filename}"
+    return f"/static/{filename}"    
 
+@app.post("/agent/query")
+def process_agentic_query(request: AgentRequest):
+    """
+    Handles queries using LangGraph, MCP, and RAG capabilities.
+    Triggers traces in LangSmith automatically.
+    """
+    try:
+        inputs = {"messages": [("user", request.query)]}
+        # Configurable thread_id allows LangGraph to maintain conversational memory
+        config = {"configurable": {"thread_id": request.session_id}}
+        
+        result = agent_app.invoke(inputs, config=config)
+        final_message = result["messages"][-1].content
+        
+        return {
+            "status": "success",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "data": {
+                "message": final_message,
+                "orchestration_engine": "LangGraph + GPT"
+            }
+        }
+    except Exception as e:
+        logger.error(f"Agent error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/query")
 def process_query(request: QueryRequest):
@@ -192,5 +212,4 @@ def process_query(request: QueryRequest):
 
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

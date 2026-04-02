@@ -7,4 +7,11 @@ python-multipart
 numpy
 folium
 spacy
+python-dotenv
+langchain
+langchain-openai
+langgraph
+faiss-cpu
+sentence-transformers
+tiktoken
 # Install standard model: python -m spacy download en_core_web_sm
