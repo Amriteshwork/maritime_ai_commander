@@ -71,6 +71,7 @@ The system transitions from a static microservice to an LLM-driven autonomous ag
     ├── nlp_processor.py    # Legacy spaCy Rule-Based Engine
     └── domain_maps.py      # ITU-R M.1371 Mappings
 ---
+```
 ## NLP Design (deterministic implementation)
 
 The NLP system is implemented using spaCy with:   
@@ -84,7 +85,7 @@ Implementation: `NLPProcessor` class in `nlp_processor.py`
 | Intent  | Example Query                                       | Behavior                             |
 | ------- | --------------------------------------------------- | ------------------------------------ |
 | SHOW    | "Show last position of INS Kolkata"                 | Returns latest lat/lon, status, type |
-| PREDICT | "Predict where Ever Given will be after 2 hours" | Projects future coordinates          |
+| PREDICT | "Predict where Ever Given will be after 2 hours" | Projects future coordinates             |
 | VERIFY  | "Check if MSC Flaminia movement is consistent"      | Runs anomaly detection on track      |
 
 ---
