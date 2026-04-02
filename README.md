@@ -4,6 +4,20 @@
 
 A FastAPI-based prototype that allows users to interact with maritime AIS (Automatic Identification System) data using natural language queries. The system supports vessel lookup, trajectory prediction, anomaly detection, and interactive geospatial visualization.
 
+This repository features a dual-architecture: a deterministic, rule-based NLP pipeline (spaCy) and a **Stateful Multi-Agent Orchestration Engine** built with **LangGraph**, utilizing **MCP (Model Context Protocol)** for tool execution and **RAG (Retrieval-Augmented Generation)** for regulatory compliance checks.
+
+### 🤖 Agentic AI & Orchestration
+- **LangGraph State Machine:** A stateful supervisor agent that intelligently routes user intents to specialized sub-agents.
+- **MCP Tool Execution:** Deterministic Python algorithms (geodesic math, 3-point physics validation) wrapped as standardized tools for LLM consumption.
+- **RAG Pipeline:** FAISS vector store integrated with SentenceTransformers to ground risk assessments in maritime law (ITU-R M.1371) and USCG guidelines.
+- **Observability:** Full execution tracing and debugging powered by LangSmith.
+
+### ⚙️ Core Domain Capabilities
+- **Robust AIS Pipeline:** Cleaning, normalization, UTC enforcement, and de-duplication of raw AIS CSV telemetry.
+- **Trajectory Prediction:** WGS-84 Geodesic projection calculating future coordinates based on speed (SOG), course (COG), and time horizons.
+- **Anomaly Detection:** 3-point physics validation detecting teleportation, impossible acceleration, and GPS spoofing.
+- **Geospatial Visualization:** Auto-generated interactive Folium maps plotting current locations, predicted paths, and security flags.
+
 ## Features
 - **Natural Language Queries**
     - "Show the last known position of INS Kolkata"
@@ -30,31 +44,34 @@ A FastAPI-based prototype that allows users to interact with maritime AIS (Autom
 
 ---
 ## Architecture Overview
-``` bash
+The system transitions from a static microservice to an LLM-driven autonomous agent, while keeping the core mathematical engines fully deterministic.
+
+```bash
 /maritime_ai_commander
 │
-├── main.py                 # Application Entry Point
+├── main.py                 # FastAPI Application Entry Point
+├── config.py               # Centralized Configuration & Environment
 ├── requirements.txt        # Dependencies
-├── README.md               # Documentation
-├── docker-compose.yml
-├── Dockerfile
+├── .env                    # Secrets (OpenAI, LangSmith API Keys)
 │
 ├── data/
-│   └── ais_sample_data.csv # Dataset
-│
+│   └── ais_sample_data.csv # Telemetry Dataset
+├── faiss_index/            # Local Vector Database for RAG
 ├── static/                 # Generated .html Leaflet maps
 │
 └── src/
-    ├── __init__.py
-    ├── logger_config.py    # Centralized Logging Setup
+    ├── agents/             # Agentic Orchestration Layer
+    │   ├── orchestrator.py # LangGraph State Machine
+    │   ├── mcp_tools.py    # Python functions wrapped as LLM Tools
+    │   └── rag_pipeline.py # FAISS document ingestion & retrieval
+    │
     ├── data_loader.py      # Robust CSV Loading & UTC Normalization
-    ├── nlp_processor.py    # spaCy Logic (Entity Ruler + Matcher)
     ├── anomaly_detector.py # 3-Point Physics Validation Logic
     ├── geospatial_utils.py # WGS-84 Geodesic Calculations
+    ├── nlp_processor.py    # Legacy spaCy Rule-Based Engine
     └── domain_maps.py      # ITU-R M.1371 Mappings
-```
 ---
-## NLP Design
+## NLP Design (deterministic implementation)
 
 The NLP system is implemented using spaCy with:   
 - Entity recognition using a dynamically generated EntityRuler from known vessel names
@@ -125,12 +142,23 @@ AIS codes are mapped to human-readable maritime labels:
 > domain_maps.py
 
 ---
+## Agentic Workflow Details
+The /agent/query endpoint utilizes LangGraph to manage a dynamic ReAct workflow:
+- **Context Initialization:** User query enters the State Graph.
+- **Tool Selection (MCP):** The GPT-4o-mini reasoning engine evaluates the request and selects the appropriate tool:
+  - `get_vessel_telemetry`: Extracts latest coordinates.
+  - `assess_vessel_risk`: Runs the 3-point physics engine.
+  - `predict_vessel_trajectory`: Executes WGS-84 geodesic projections.
+  - `maritime_regulatory_retriever`: Queries the FAISS index for compliance guidelines.
+- **Synthesis:** The agent combines tool outputs, cross-references anomalies with retrieved RAG documents, and streams a cohesive intelligence briefing.
+---
 
 ## Setup & Installation
 
 ### Prerequisites
 - Python 3.10+
 - pip
+- OpenAI API Key
 
 ### 1. Clone the Repository
 ```bash
@@ -159,6 +187,18 @@ You must also install the spaCy English model:
 ```bash
 python -m spacy download en_core_web_sm
 ```
+### 4. Environment Variables
+Create a .env file in the root directory:
+```bash
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Optional: LangSmith Observability
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_PROJECT=Maritime_AI_Commander
+LANGCHAIN_ENDPOINT=[https://api.smith.langchain.com](https://api.smith.langchain.com)
+LANGCHAIN_API_KEY=your_langsmith_api_key_here
+```
+
 ### 4. Check Dataset Location
 The project expects this file to exist:
 > data/ais_sample_data.csv   
@@ -190,7 +230,7 @@ Open your browser and go to:
 > http://127.0.0.1:8000/docs
 
 You will see an interactive UI where you can test the API without writing any code.   
-**Example:**   
+**Example: Using Deterministic Approach**   
 1. Click on POST /query
 2. Click "Try it out"
 3. Enter:
@@ -290,6 +330,31 @@ curl -X POST http://127.0.0.1:8000/query \
   -H "Content-Type: application/json" \
   -d '{"query": "Check if INS Kolkata movement is consistent"}'
 ```
+**Example: Using Agentic Approach** 
+The Agentic Endpoint `(POST /agent/query)`      
+Leverages LangGraph for reasoning, context memory, and tool execution. 
+
+**Request:**
+```bash
+curl -X POST [http://127.0.0.1:8000/agent/query](http://127.0.0.1:8000/agent/query) \
+  -H "Content-Type: application/json" \
+  -d '{
+        "query": "Is MSC Flaminia moving normally? If there are anomalies, check maritime regulations to see what it might indicate.",
+        "session_id": "operator_1"
+      }'
+```
+**Response:**
+```bash
+{
+  "status": "success",
+  "data":
+    {
+      "message": "I have checked the telemetry for MSC Flaminia. The 3-point physics validation detected a Spoofing Risk (Heading 90.0° vs Course 45.0°). According to the retrieved USCG AIS Guidelines and ITU-R regulations, a deviation of greater than 45 degrees often indicates GPS spoofing or sensor failure...",
+    "orchestration_engine": "LangGraph + GPT"
+    }  
+}
+```
+
 ## Docker Setup
 Run the entire system in a container without installing Python dependencies locally.
 
